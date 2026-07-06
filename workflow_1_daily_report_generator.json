@@ -1,0 +1,272 @@
+{
+  "name": "Workflow 1 - Daily Report Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "every",
+        "unit": "day",
+        "value": 1,
+        "triggerAtHour": 9,
+        "triggerAtMinute": 0,
+        "timezone": "Europe/Oslo"
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger - 9am Daily",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "const now = new Date();\nreturn [\n  {\n    json: {\n      execution_id: `exec_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`,\n      workflow_name: 'Daily Report Generator',\n      timestamp: now.toISOString(),\n      timestamp_readable: now.toLocaleString('en-NO', { timeZone: 'Europe/Oslo' }),\n      date_only: now.toLocaleDateString('en-NO', { timeZone: 'Europe/Oslo' }),\n      niches: ['romance', 'thriller', 'self-help', 'business', 'cooking']\n    }\n  }\n];"
+      },
+      "id": "set-context",
+      "name": "Set Execution Context",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "niches",
+              "value": "romance,thriller,self-help,business,cooking"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            },
+            {
+              "name": "include_volume",
+              "value": "true"
+            },
+            {
+              "name": "include_competition",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{env.API_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "http-fetch-search",
+      "name": "HTTP - Fetch Search Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 100],
+      "onError": "continueRegularFlow"
+    },
+    {
+      "parameters": {
+        "functionCode": "const context = $input.first().json;\nconst searchData = $input.last().json;\n\nconst results = [];\nif (Array.isArray(searchData)) {\n  searchData.forEach(item => {\n    results.push({\n      A: context.timestamp_readable,\n      B: context.date_only,\n      C: item.niche || 'unknown',\n      D: item.trending_keyword || '',\n      E: item.search_volume || 0,\n      F: item.competition_level || 'Unknown',\n      G: context.execution_id\n    });\n  });\n}\n\nreturn [{ json: { data: results, count: results.length } }];"
+      },
+      "id": "transform-data",
+      "name": "Transform - Format for Sheets",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 100]
+    },
+    {
+      "parameters": {
+        "googleSheetMode": "append",
+        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
+        "sheetName": "Daily Reports",
+        "dataMode": "define_by_map",
+        "dataMapping": {
+          "mappingMode": "defineByMap",
+          "value": [
+            {
+              "fromKey": "A",
+              "toKey": "Timestamp"
+            },
+            {
+              "fromKey": "B",
+              "toKey": "Date"
+            },\n            {
+              "fromKey": "C",
+              "toKey": "Niche"
+            },
+            {
+              "fromKey": "D",
+              "toKey": "Trend"
+            },
+            {
+              "fromKey": "E",
+              "toKey": "Search Volume"
+            },
+            {
+              "fromKey": "F",
+              "toKey": "Competition"
+            },
+            {
+              "fromKey": "G",
+              "toKey": "Execution ID"
+            }
+          ]
+        }
+      },
+      "id": "append-sheets-daily",
+      "name": "Google Sheets - Append Daily Reports",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "googleSheetMode": "append",
+        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
+        "sheetName": "Execution Log",
+        "dataMode": "define_by_map",
+        "dataMapping": {
+          "mappingMode": "defineByMap",
+          "value": [
+            {
+              "fromKey": "timestamp_readable",
+              "toKey": "Timestamp"
+            },
+            {
+              "fromKey": "workflow_name",
+              "toKey": "Workflow"
+            },
+            {
+              "fromKey": "status",
+              "toKey": "Status"
+            },
+            {
+              "fromKey": "error",
+              "toKey": "Error Message"
+            },
+            {
+              "fromKey": "execution_id",
+              "toKey": "Execution ID"
+            },
+            {
+              "fromKey": "duration",
+              "toKey": "Duration (seconds)"
+            },
+            {
+              "fromKey": "records",
+              "toKey": "Records Processed"
+            }
+          ]
+        }
+      },
+      "id": "log-execution",
+      "name": "Google Sheets - Log Execution",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "trigger": "errors"
+      },
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@n8n.io",
+        "toEmail": "your-email@example.com",
+        "subject": "[ALERT] Daily Report Generator - Execution Failed",
+        "textContent": "Workflow: Daily Report Generator\\nExecution ID: {{execution_id}}\\nTimestamp: {{$now}}\\n\\nError: {{error.message}}\\n\\nPlease check n8n logs: https://mizgind1t.app.n8n.cloud"
+      },
+      "id": "send-error-email",
+      "name": "Send Error Email",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "cron-trigger": {
+      "main": [
+        [
+          {
+            "node": "set-context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set-context": {
+      "main": [
+        [
+          {
+            "node": "http-fetch-search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "http-fetch-search": {
+      "main": [
+        [
+          {
+            "node": "transform-data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transform-data": {
+      "main": [
+        [
+          {
+            "node": "append-sheets-daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "append-sheets-daily": {
+      "main": [
+        [
+          {
+            "node": "log-execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error-trigger": {
+      "main": [
+        [
+          {
+            "node": "send-error-email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "Europe/Oslo"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "name": "Workflow 5 - Content Recommendations",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "every",
+        "unit": "week",
+        "value": 1,
+        "triggerAtDay": "Friday",
+        "triggerAtHour": 14,
+        "triggerAtMinute": 0,
+        "timezone": "Europe/Oslo"
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger - Friday 2pm",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "const now = new Date();\nreturn [\n  {\n    json: {\n      execution_id: `exec_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`,\n      workflow_name: 'Content Recommendations',\n      timestamp: now.toISOString(),\n      timestamp_readable: now.toLocaleString('en-NO', { timeZone: 'Europe/Oslo' })\n    }\n  }\n];"
+      },
+      "id": "set-context",
+      "name": "Set Execution Context",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/weekly-summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{env.API_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "id": "http-fetch-summary",
+      "name": "HTTP - Fetch Weekly Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "const data = $input.first().json;\nconst context = $input.all()[0].json;\n\nconst calculateScores = (item) => {\n  const marketScore = Math.min((item.search_volume || 0) / 10000 * 10, 10);\n  const trendScore = Math.min((item.trend_change || 0) / 5 + 5, 10);\n  const competitionScore = (item.market_saturation || 0) / 100 * 10;\n  const overall = (marketScore + trendScore + (10 - competitionScore)) / 3;\n  \n  return {\n    marketScore: Math.round(marketScore * 10) / 10,\n    trendScore: Math.round(trendScore * 10) / 10,\n    competitionScore: Math.round(competitionScore * 10) / 10,\n    overall: Math.round(overall * 100) / 100\n  };\n};\n\nconst recommendations = (data.items || []).map(item => {\n  const scores = calculateScores(item);\n  return {\n    title: item.keyword || 'Unknown',\n    format: item.format || 'Full Novel',\n    niche: item.niche || 'Unknown',\n    ...scores,\n    reasoning: `Market: ${scores.marketScore}/10, Trend: ${scores.trendScore}/10, Low Comp: ${Math.max(0, 10-scores.competitionScore)}/10`\n  };\n}).sort((a, b) => b.overall - a.overall).slice(0, 3);\n\nreturn recommendations.map((rec, idx) => ({\n  A: context.timestamp_readable,\n  B: idx + 1,\n  C: rec.title,\n  D: rec.format,\n  E: rec.niche,\n  F: rec.marketScore,\n  G: rec.trendScore,\n  H: rec.competitionScore,\n  I: rec.overall,\n  J: rec.reasoning,\n  K: context.execution_id\n}));"
+      },
+      "id": "calculate-scores",
+      "name": "Function - Calculate & Rank Scores",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 100]
+    },
+    {
+      "parameters": {
+        "googleSheetMode": "append",
+        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
+        "sheetName": "Recommendations",
+        "dataMode": "define_by_map",
+        "dataMapping": {
+          "mappingMode": "defineByMap",
+          "value": [
+            { "fromKey": "A", "toKey": "Timestamp" },
+            { "fromKey": "B", "toKey": "Rank" },
+            { "fromKey": "C", "toKey": "Book Title" },
+            { "fromKey": "D", "toKey": "Format" },
+            { "fromKey": "E", "toKey": "Niche" },
+            { "fromKey": "F", "toKey": "Market Size Score" },
+            { "fromKey": "G", "toKey": "Trend Score" },
+            { "fromKey": "H", "toKey": "Competition Score" },
+            { "fromKey": "I", "toKey": "Overall Score" },
+            { "fromKey": "J", "toKey": "Reasoning" },
+            { "fromKey": "K", "toKey": "Execution ID" }
+          ]
+        }
+      },
+      "id": "append-sheets-recommendations",
+      "name": "Google Sheets - Append Recommendations",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "googleSheetMode": "append",
+        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
+        "sheetName": "Execution Log",
+        "dataMode": "define_by_map",
+        "dataMapping": {
+          "mappingMode": "defineByMap",
+          "value": [
+            { "fromKey": "timestamp_readable", "toKey": "Timestamp" },
+            { "fromKey": "workflow_name", "toKey": "Workflow" },
+            { "fromKey": "status", "toKey": "Status" },
+            { "fromKey": "execution_id", "toKey": "Execution ID" }
+          ]
+        }
+      },
+      "id": "log-execution",
+      "name": "Google Sheets - Log Execution",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "trigger": "errors"
+      },
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@n8n.io",
+        "toEmail": "your-email@example.com",
+        "subject": "[ALERT] Content Recommendations - Execution Failed",
+        "textContent": "Workflow: Content Recommendations\\nTimestamp: {{$now}}\\nError: {{error.message}}\\nCheck logs: https://mizgind1t.app.n8n.cloud"
+      },
+      "id": "send-error-email",
+      "name": "Send Error Email",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "cron-trigger": {
+      "main": [[{ "node": "set-context", "type": "main", "index": 0 }]]
+    },
+    "set-context": {
+      "main": [[{ "node": "http-fetch-summary", "type": "main", "index": 0 }]]
+    },
+    "http-fetch-summary": {
+      "main": [[{ "node": "calculate-scores", "type": "main", "index": 0 }]]
+    },
+    "calculate-scores": {
+      "main": [[{ "node": "append-sheets-recommendations", "type": "main", "index": 0 }]]
+    },
+    "append-sheets-recommendations": {
+      "main": [[{ "node": "log-execution", "type": "main", "index": 0 }]]
+    },
+    "error-trigger": {
+      "main": [[{ "node": "send-error-email", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "Europe/Oslo"
+  }
+}

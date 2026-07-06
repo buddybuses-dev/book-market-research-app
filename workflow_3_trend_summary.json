@@ -1,0 +1,170 @@
+{
+  "name": "Workflow 3 - Trend Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "every",
+        "unit": "week",
+        "value": 1,
+        "triggerAtDay": "Sunday",
+        "triggerAtHour": 18,
+        "triggerAtMinute": 0,
+        "timezone": "Europe/Oslo"
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger - Sunday 6pm",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "const now = new Date();\nconst year = now.getFullYear();\nconst week = Math.ceil(((now - new Date(year, 0, 1)) / 86400000 + new Date(year, 0, 1).getDay() + 1) / 7);\n\nreturn [\n  {\n    json: {\n      execution_id: `exec_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`,\n      workflow_name: 'Trend Summary',\n      timestamp: now.toISOString(),\n      timestamp_readable: now.toLocaleString('en-NO', { timeZone: 'Europe/Oslo' }),\n      week: `${year}-W${String(week).padStart(2,'0')}`\n    }\n  }\n];"
+      },
+      "id": "set-context",
+      "name": "Set Execution Context + Week Calc",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/trends",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "period",
+              "value": "week"
+            },
+            {
+              "name": "niches",
+              "value": "all"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{env.API_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "id": "http-fetch-trends",
+      "name": "HTTP - Fetch Trend Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst context = $input.all()[0].json;\n\nconst current = item.current_volume || 0;\nconst previous = item.previous_volume || current;\nconst change = previous > 0 ? ((current - previous) / previous) * 100 : 0;\nconst status = change > 5 ? 'UP' : (change < -5 ? 'DOWN' : 'STABLE');\n\nreturn {\n  A: context.timestamp_readable,\n  B: context.week,\n  C: item.niche || 'unknown',\n  D: status,\n  E: `${change > 0 ? '+' : ''}${Math.round(change * 10) / 10}%`,\n  F: current,\n  G: previous,\n  H: item.trending_keywords?.join(', ') || '',\n  I: context.execution_id\n};"
+      },
+      "id": "transform-trend-data",
+      "name": "Transform - Calculate WoW Changes",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 100]
+    },
+    {
+      "parameters": {
+        "googleSheetMode": "append",
+        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
+        "sheetName": "Trends",
+        "dataMode": "define_by_map",
+        "dataMapping": {
+          "mappingMode": "defineByMap",
+          "value": [
+            { "fromKey": "A", "toKey": "Timestamp" },
+            { "fromKey": "B", "toKey": "Week" },
+            { "fromKey": "C", "toKey": "Niche" },
+            { "fromKey": "D", "toKey": "Trend Status" },
+            { "fromKey": "E", "toKey": "Week-over-Week Change %" },
+            { "fromKey": "F", "toKey": "Current Volume" },
+            { "fromKey": "G", "toKey": "Previous Volume" },
+            { "fromKey": "H", "toKey": "Trending Keywords" },
+            { "fromKey": "I", "toKey": "Execution ID" }
+          ]
+        }
+      },
+      "id": "append-sheets-trends",
+      "name": "Google Sheets - Append Trends",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "googleSheetMode": "append",
+        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
+        "sheetName": "Execution Log",
+        "dataMode": "define_by_map",
+        "dataMapping": {
+          "mappingMode": "defineByMap",
+          "value": [
+            { "fromKey": "timestamp_readable", "toKey": "Timestamp" },
+            { "fromKey": "workflow_name", "toKey": "Workflow" },
+            { "fromKey": "status", "toKey": "Status" },
+            { "fromKey": "execution_id", "toKey": "Execution ID" }
+          ]
+        }
+      },
+      "id": "log-execution",
+      "name": "Google Sheets - Log Execution",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "trigger": "errors"
+      },
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@n8n.io",
+        "toEmail": "your-email@example.com",
+        "subject": "[ALERT] Trend Summary - Execution Failed",
+        "textContent": "Workflow: Trend Summary\\nTimestamp: {{$now}}\\nError: {{error.message}}\\nCheck logs: https://mizgind1t.app.n8n.cloud"
+      },
+      "id": "send-error-email",
+      "name": "Send Error Email",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "cron-trigger": {
+      "main": [[{ "node": "set-context", "type": "main", "index": 0 }]]
+    },
+    "set-context": {
+      "main": [[{ "node": "http-fetch-trends", "type": "main", "index": 0 }]]
+    },
+    "http-fetch-trends": {
+      "main": [[{ "node": "transform-trend-data", "type": "main", "index": 0 }]]
+    },
+    "transform-trend-data": {
+      "main": [[{ "node": "append-sheets-trends", "type": "main", "index": 0 }]]
+    },
+    "append-sheets-trends": {
+      "main": [[{ "node": "log-execution", "type": "main", "index": 0 }]]
+    },
+    "error-trigger": {
+      "main": [[{ "node": "send-error-email", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "Europe/Oslo"
+  }
+}
