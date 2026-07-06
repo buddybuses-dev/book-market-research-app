@@ -1,0 +1,86 @@
+{
+  "name": "Story Market Amazon Bridge",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "story-market-amazon-bridge",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9c2371bc-4f29-447e-a2ef-9c9587c7d257",
+      "name": "Amazon Bridge Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "story-market-amazon-bridge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json;\nconst storyTitle = body.storyTitle ?? 'Untitled story';\nconst toolName = body.tool?.name ?? '';\n\n// TODO: Replace this mocked payload with your real Amazon SP-API call flow.\n// Keep the response shape because the app expects this structure.\nconst simulatedPrice = toolName === 'searchProductsPricing' ? 11.99 : 9.99;\n\nreturn [{\n  json: {\n    status: 'OK (bridge mock)',\n    request: {\n      storyTitle,\n      primaryLanguage: body.primaryLanguage ?? 'en',\n      module: toolName\n    },\n    summary: {\n      status: 'Bridge received request',\n      averageInterest: simulatedPrice,\n      points: 1,\n      latestPoint: {\n        marketplace: body.market?.geo ?? 'US',\n        estimatedPrice: simulatedPrice,\n        note: 'Replace mock with real SP-API response mapping'\n      }\n    },\n    items: [\n      {\n        sku: 'EXAMPLE-SKU',\n        asin: 'EXAMPLE-ASIN',\n        marketplace: body.market?.geo ?? 'US',\n        estimatedPrice: simulatedPrice\n      }\n    ]\n  }\n}];"
+      },
+      "id": "fda498dc-0e94-4e95-8898-efce5fdd06e6",
+      "name": "Prepare Amazon Bridge Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "d4deeb53-d35e-4b8d-b5ac-a11d2e408f1b",
+      "name": "Return Bridge JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        860,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Amazon Bridge Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Amazon Bridge Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Amazon Bridge Response": {
+      "main": [
+        [
+          {
+            "node": "Return Bridge JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ec6fe0ca-2f71-4f37-890b-5c488a0a8a2a",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "story-market-amazon-bridge-template"
+  },
+  "id": "story-market-amazon-bridge-template",
+  "tags": []
+}

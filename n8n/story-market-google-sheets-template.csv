@@ -1,0 +1,2 @@
+syncedAt,storyTitle,primaryLanguage,alternateLanguage,selectedFormats,selectedToolCount,requestCount,configuredConnectors,missingConnectors,toolKey,appName,module,label,moduleType,connectorConfigured,provider,missingEnvKeys,liveProvider,liveToolKey,liveStatus,liveAverageInterest,livePoints
+2026-07-03T00:00:00.000Z,The Same Story,en,es,"kindle, paperback",2,2,2,0,serpapi:searchGoogleTrends,serpapi,searchGoogleTrends,Search Google Trends,search,true,SerpApi,,SerpApi,serpapi:searchGoogleTrends,Success,72,52

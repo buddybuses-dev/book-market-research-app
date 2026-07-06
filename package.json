@@ -1,0 +1,29 @@
+{
+  "name": "book-market-research-app",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "verify:n8n": "node scripts/verify-n8n-sync.mjs",
+    "verify:live": "node scripts/verify-live-connectors.mjs",
+    "verify:secrets": "node scripts/verify-secrets.mjs",
+    "verify:all": "npm run build && npm run verify:n8n && npm run verify:secrets",
+    "verify:full": "npm run verify:all && npm run verify:live"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "eslint": "9.25.1",
+    "eslint-config-next": "16.2.10",
+    "typescript": "5.8.3"
+  }
+}

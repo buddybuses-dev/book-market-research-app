@@ -1,0 +1,159 @@
+{
+  "name": "Story Market Desk to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "story-market-desk",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "9d96d03d-8b4d-458e-a070-ec8b92934001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "story-market-desk"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = Array.isArray($json.sheetRows) ? $json.sheetRows : [];\n\nif (rows.length === 0) {\n  return [{\n    json: {\n      syncedAt: $json.sentAt ?? new Date().toISOString(),\n      storyTitle: $json.story?.title ?? '',\n      primaryLanguage: $json.story?.primaryLanguage ?? '',\n      alternateLanguage: $json.story?.alternateLanguage ?? '',\n      selectedFormats: Array.isArray($json.story?.selectedFormats) ? $json.story.selectedFormats.join(', ') : '',\n      selectedToolCount: Array.isArray($json.story?.selectedTools) ? $json.story.selectedTools.length : 0,\n      requestCount: $json.requestPack?.requestCount ?? 0,\n      configuredConnectors: $json.requestPack?.connectorSummary?.configured ?? 0,\n      missingConnectors: $json.requestPack?.connectorSummary?.missing ?? 0,\n      toolKey: '',\n      appName: '',\n      module: '',\n      label: '',\n      moduleType: '',\n      connectorConfigured: false,\n      provider: '',\n      missingEnvKeys: '',\n      liveProvider: $json.liveRun?.provider ?? '',\n      liveToolKey: $json.liveRun?.toolKey ?? '',\n      liveStatus: $json.liveRun?.summary?.status ?? '',\n      liveAverageInterest: $json.liveRun?.summary?.averageInterest ?? '',\n      livePoints: $json.liveRun?.summary?.points ?? ''\n    }\n  }];\n}\n\nreturn rows.map((row) => ({ json: row }));"
+      },
+      "id": "ca789701-9344-4326-9f50-8aa0f5fef3ff",
+      "name": "Explode Sheet Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "syncedAt": "={{$json.syncedAt}}",
+            "storyTitle": "={{$json.storyTitle}}",
+            "primaryLanguage": "={{$json.primaryLanguage}}",
+            "alternateLanguage": "={{$json.alternateLanguage}}",
+            "selectedFormats": "={{$json.selectedFormats}}",
+            "selectedToolCount": "={{$json.selectedToolCount}}",
+            "requestCount": "={{$json.requestCount}}",
+            "configuredConnectors": "={{$json.configuredConnectors}}",
+            "missingConnectors": "={{$json.missingConnectors}}",
+            "toolKey": "={{$json.toolKey}}",
+            "appName": "={{$json.appName}}",
+            "module": "={{$json.module}}",
+            "label": "={{$json.label}}",
+            "moduleType": "={{$json.moduleType}}",
+            "connectorConfigured": "={{$json.connectorConfigured}}",
+            "provider": "={{$json.provider}}",
+            "missingEnvKeys": "={{$json.missingEnvKeys}}",
+            "liveProvider": "={{$json.liveProvider}}",
+            "liveToolKey": "={{$json.liveToolKey}}",
+            "liveStatus": "={{$json.liveStatus}}",
+            "liveAverageInterest": "={{$json.liveAverageInterest}}",
+            "livePoints": "={{$json.livePoints}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "syncedAt", "displayName": "syncedAt", "type": "string", "canBeUsedToMatch": true },
+            { "id": "storyTitle", "displayName": "storyTitle", "type": "string", "canBeUsedToMatch": true },
+            { "id": "primaryLanguage", "displayName": "primaryLanguage", "type": "string", "canBeUsedToMatch": true },
+            { "id": "alternateLanguage", "displayName": "alternateLanguage", "type": "string", "canBeUsedToMatch": true },
+            { "id": "selectedFormats", "displayName": "selectedFormats", "type": "string", "canBeUsedToMatch": true },
+            { "id": "selectedToolCount", "displayName": "selectedToolCount", "type": "string", "canBeUsedToMatch": true },
+            { "id": "requestCount", "displayName": "requestCount", "type": "string", "canBeUsedToMatch": true },
+            { "id": "configuredConnectors", "displayName": "configuredConnectors", "type": "string", "canBeUsedToMatch": true },
+            { "id": "missingConnectors", "displayName": "missingConnectors", "type": "string", "canBeUsedToMatch": true },
+            { "id": "toolKey", "displayName": "toolKey", "type": "string", "canBeUsedToMatch": true },
+            { "id": "appName", "displayName": "appName", "type": "string", "canBeUsedToMatch": true },
+            { "id": "module", "displayName": "module", "type": "string", "canBeUsedToMatch": true },
+            { "id": "label", "displayName": "label", "type": "string", "canBeUsedToMatch": true },
+            { "id": "moduleType", "displayName": "moduleType", "type": "string", "canBeUsedToMatch": true },
+            { "id": "connectorConfigured", "displayName": "connectorConfigured", "type": "string", "canBeUsedToMatch": true },
+            { "id": "provider", "displayName": "provider", "type": "string", "canBeUsedToMatch": true },
+            { "id": "missingEnvKeys", "displayName": "missingEnvKeys", "type": "string", "canBeUsedToMatch": true },
+            { "id": "liveProvider", "displayName": "liveProvider", "type": "string", "canBeUsedToMatch": true },
+            { "id": "liveToolKey", "displayName": "liveToolKey", "type": "string", "canBeUsedToMatch": true },
+            { "id": "liveStatus", "displayName": "liveStatus", "type": "string", "canBeUsedToMatch": true },
+            { "id": "liveAverageInterest", "displayName": "liveAverageInterest", "type": "string", "canBeUsedToMatch": true },
+            { "id": "livePoints", "displayName": "livePoints", "type": "string", "canBeUsedToMatch": true }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3f7ae4e0-12a2-4cfd-80f6-b5e39f26cb7f",
+      "name": "Append To Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        860,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Explode Sheet Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Explode Sheet Rows": {
+      "main": [
+        [
+          {
+            "node": "Append To Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "76674d08-8d2d-4ff8-94dd-bad9d3f63752",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "story-market-desk-template"
+  },
+  "id": "story-market-desk-template",
+  "tags": []
+}

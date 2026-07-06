@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Story Market Desk icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#244b5a" />
+      <stop offset="100%" stop-color="#b04a2f" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg)" />
+  <path d="M36 38h56v10H36zM36 58h56v10H36zM36 78h38v10H36z" fill="#f8f2e8" />
+  <circle cx="89" cy="83" r="11" fill="#f8f2e8" />
+  <path d="M89 76v14M82 83h14" stroke="#244b5a" stroke-width="3" stroke-linecap="round" />
+</svg>
