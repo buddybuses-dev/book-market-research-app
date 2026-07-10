@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "next lint",
     "verify:n8n": "node scripts/verify-n8n-sync.mjs",
     "verify:live": "node scripts/verify-live-connectors.mjs",
