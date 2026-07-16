@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { checkAppSecret } from "@/lib/api-auth";
+import { processEnv } from "@/lib/env";
+
 type N8nSyncBody = {
   storyTitle?: string;
   primaryLanguage?: string;
@@ -41,12 +44,6 @@ type N8nSyncBody = {
   runHistory?: unknown;
 };
 
-const processEnv = (
-  globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  }
-).process?.env ?? {};
-
 function getSafeWebhookUrl(urlValue: string) {
   try {
     const parsed = new URL(urlValue);
@@ -79,6 +76,12 @@ function getSecretConfig() {
 }
 
 export async function POST(request: Request) {
+  const authError = checkAppSecret(request);
+
+  if (authError) {
+    return authError;
+  }
+
   const webhookUrl = processEnv.N8N_WEBHOOK_URL?.trim();
 
   if (!webhookUrl) {

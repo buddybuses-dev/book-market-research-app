@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { checkAppSecret } from "@/lib/api-auth";
+import { processEnv } from "@/lib/env";
 import { getConnectorStatus } from "@/lib/tool-providers";
 
 type ToolRunBody = {
@@ -40,13 +42,13 @@ const localServiceKeywords = [
   "contractor"
 ];
 
-const processEnv = (
-  globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  }
-).process?.env ?? {};
-
 export async function POST(request: Request) {
+  const authError = checkAppSecret(request);
+
+  if (authError) {
+    return authError;
+  }
+
   const body = (await request.json()) as ToolRunBody;
   const activeTool = body.activeTool;
   const storyTitle = body.storyTitle?.trim() || "Untitled story";

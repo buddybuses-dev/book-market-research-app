@@ -1,10 +1,5 @@
+import { processEnv } from "@/lib/env";
 import { getConnectorStatus } from "./tool-providers";
-
-const processEnv = (
-  globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  }
-).process?.env ?? {};
 
 export interface DailyReportItem {
   niche: string;

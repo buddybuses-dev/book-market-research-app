@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { checkAppSecret } from "@/lib/api-auth";
 import { generateTrendData, logApiCall } from "@/lib/api-utils";
 import type { TrendData } from "@/lib/api-utils";
 
 export async function GET(request: Request) {
+  const authError = checkAppSecret(request);
+
+  if (authError) {
+    return authError;
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const niche = searchParams.get("niche");

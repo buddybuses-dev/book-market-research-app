@@ -784,7 +784,10 @@ export default function Page() {
         const response = await fetch("/api/tool-run", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            ...(process.env.NEXT_PUBLIC_APP_API_SECRET
+              ? { "X-App-Secret": process.env.NEXT_PUBLIC_APP_API_SECRET }
+              : {})
           },
           body: JSON.stringify({
             activeTool: {
@@ -1020,7 +1023,10 @@ export default function Page() {
       const response = await fetch("/api/tool-run", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(process.env.NEXT_PUBLIC_APP_API_SECRET
+            ? { "X-App-Secret": process.env.NEXT_PUBLIC_APP_API_SECRET }
+            : {})
         },
         body: JSON.stringify({
           storyTitle,

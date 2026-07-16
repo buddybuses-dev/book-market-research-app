@@ -1,4 +1,6 @@
-﻿export type ProviderDefinition = {
+﻿import { processEnv } from "@/lib/env";
+
+export type ProviderDefinition = {
   key: string;
   label: string;
   baseUrl: string;
@@ -6,12 +8,6 @@
   authType: "apiKeyQuery" | "basic" | "bearerHeader" | "apiKeyHeader";
   apps: string[];
 };
-
-const processEnv = (
-  globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  }
-).process?.env ?? {};
 
 export const providerDefinitions: ProviderDefinition[] = [
   {

@@ -52,17 +52,17 @@ Copy from `.env.local` to your deployment platform:
 
 ```env
 # Essentials
-SERPAPI_API_KEY=REDACTED-SERPAPI-KEY
-N8N_WEBHOOK_URL=https://mizgind1t.app.n8n.cloud/webhook/REDACTED-N8N-WEBHOOK-ID
-AMAZON_SP_API_WEBHOOK_URL=https://mizgind1t.app.n8n.cloud/webhook/story-market-amazon-bridge
+SERPAPI_API_KEY=your_serpapi_key
+N8N_WEBHOOK_URL=your_n8n_webhook_url
+AMAZON_SP_API_WEBHOOK_URL=your_amazon_bridge_webhook_url
 
 # Optional (already configured)
-DATAFORSEO_LOGIN=REDACTED-DATAFORSEO-LOGIN
-DATAFORSEO_PASSWORD=REDACTED-DATAFORSEO-PASSWORD
-KEYWORDS_EVERYWHERE_API_KEY=REDACTED-KEYWORDS-EVERYWHERE-KEY
-SCRAPINGBEE_API_KEY=REDACTED-SCRAPINGBEE-KEY
-CRAYO_API_KEY=REDACTED-CRAYO-KEY
-ELEVENLABS_API_KEY=REDACTED-ELEVENLABS-KEY
+DATAFORSEO_LOGIN=your_dataforseo_login
+DATAFORSEO_PASSWORD=your_dataforseo_password
+KEYWORDS_EVERYWHERE_API_KEY=your_keywords_everywhere_key
+SCRAPINGBEE_API_KEY=your_scrapingbee_key
+CRAYO_API_KEY=your_crayo_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
 ELEVENLABS_VOICE_ID=CwhRBWXzGAHq8TQ4Fs17
 
 # Public flags (set to true)
