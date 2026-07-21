@@ -1,4 +1,4 @@
-﻿import { processEnv } from "@/lib/env";
+import { processEnv } from "@/lib/env";
 
 export type ProviderDefinition = {
   key: string;
@@ -7,7 +7,23 @@ export type ProviderDefinition = {
   credentialEnvKeys: string[];
   authType: "apiKeyQuery" | "basic" | "bearerHeader" | "apiKeyHeader";
   apps: string[];
+  claudeSupported?: boolean;
 };
+
+// Apps that Claude can fully replace with free AI-generated research
+const CLAUDE_SUPPORTED_APPS = new Set([
+  "serpapi",
+  "dataforseo",
+  "dataforseo-labs-api",
+  "dataforseo-keywords-data-api",
+  "amazon-seller-central",
+  "keywords-everywhere-api",
+  "scrapingbee",
+  "se-ranking-seo-data",
+  "semrush",
+  "haloscan",
+  "scrape-it-cloud"
+]);
 
 export const providerDefinitions: ProviderDefinition[] = [
   {
@@ -16,7 +32,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://serpapi.com",
     credentialEnvKeys: ["SERPAPI_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["serpapi"]
+    apps: ["serpapi"],
+    claudeSupported: true
   },
   {
     key: "dataforseo",
@@ -24,7 +41,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.dataforseo.com",
     credentialEnvKeys: ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"],
     authType: "basic",
-    apps: ["dataforseo", "dataforseo-labs-api", "dataforseo-keywords-data-api"]
+    apps: ["dataforseo", "dataforseo-labs-api", "dataforseo-keywords-data-api"],
+    claudeSupported: true
   },
   {
     key: "keywords-everywhere-api",
@@ -32,7 +50,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.keywordseverywhere.com",
     credentialEnvKeys: ["KEYWORDS_EVERYWHERE_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["keywords-everywhere-api"]
+    apps: ["keywords-everywhere-api"],
+    claudeSupported: true
   },
   {
     key: "scrapingbee",
@@ -40,7 +59,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://app.scrapingbee.com/api/v1",
     credentialEnvKeys: ["SCRAPINGBEE_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["scrapingbee"]
+    apps: ["scrapingbee"],
+    claudeSupported: true
   },
   {
     key: "se-ranking-seo-data",
@@ -48,7 +68,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.seranking.com",
     credentialEnvKeys: ["SE_RANKING_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["se-ranking-seo-data"]
+    apps: ["se-ranking-seo-data"],
+    claudeSupported: true
   },
   {
     key: "semrush",
@@ -56,7 +77,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.semrush.com",
     credentialEnvKeys: ["SEMRUSH_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["semrush"]
+    apps: ["semrush"],
+    claudeSupported: true
   },
   {
     key: "crayo",
@@ -64,7 +86,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.crayo.ai",
     credentialEnvKeys: ["CRAYO_API_KEY"],
     authType: "bearerHeader",
-    apps: ["crayo"]
+    apps: ["crayo"],
+    claudeSupported: false
   },
   {
     key: "elevenlabs",
@@ -72,7 +95,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.elevenlabs.io",
     credentialEnvKeys: ["ELEVENLABS_API_KEY"],
     authType: "apiKeyHeader",
-    apps: ["elevenlabs"]
+    apps: ["elevenlabs"],
+    claudeSupported: false
   },
   {
     key: "amazon-seller-central",
@@ -80,7 +104,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "n8n Amazon webhook bridge",
     credentialEnvKeys: ["AMAZON_SP_API_WEBHOOK_URL"],
     authType: "apiKeyQuery",
-    apps: ["amazon-seller-central"]
+    apps: ["amazon-seller-central"],
+    claudeSupported: true
   },
   {
     key: "haloscan",
@@ -88,7 +113,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.haloscan.io",
     credentialEnvKeys: ["HALOSCAN_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["haloscan"]
+    apps: ["haloscan"],
+    claudeSupported: true
   },
   {
     key: "scrape-it-cloud",
@@ -96,7 +122,8 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.scrape-it.cloud",
     credentialEnvKeys: ["SCRAPE_IT_CLOUD_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["scrape-it-cloud"]
+    apps: ["scrape-it-cloud"],
+    claudeSupported: true
   },
   {
     key: "magic-meal-kits",
@@ -104,12 +131,17 @@ export const providerDefinitions: ProviderDefinition[] = [
     baseUrl: "https://api.magicmealkits.example",
     credentialEnvKeys: ["MAGIC_MEAL_KITS_API_KEY"],
     authType: "apiKeyQuery",
-    apps: ["magic-meal-kits"]
+    apps: ["magic-meal-kits"],
+    claudeSupported: false
   }
 ];
 
 export function getProviderForApp(appName: string) {
   return providerDefinitions.find((provider) => provider.apps.includes(appName)) ?? null;
+}
+
+export function isClaudeSupported(appName: string): boolean {
+  return CLAUDE_SUPPORTED_APPS.has(appName) && !!processEnv.ANTHROPIC_API_KEY;
 }
 
 export function getConnectorStatus(appName: string) {
@@ -118,16 +150,21 @@ export function getConnectorStatus(appName: string) {
   if (!provider) {
     return {
       configured: false,
+      claudeFallback: false,
       provider: null,
       missingEnvKeys: [] as string[]
     };
   }
 
   const missingEnvKeys = provider.credentialEnvKeys.filter((envKey) => !processEnv[envKey]);
+  const hasRealKeys = missingEnvKeys.length === 0;
+  const claudeFallback = !hasRealKeys && isClaudeSupported(appName);
 
   return {
-    configured: missingEnvKeys.length === 0,
+    // configured = true if real API key OR Claude fallback available
+    configured: hasRealKeys || claudeFallback,
+    claudeFallback,
     provider,
-    missingEnvKeys
+    missingEnvKeys: claudeFallback ? [] : missingEnvKeys
   };
 }
