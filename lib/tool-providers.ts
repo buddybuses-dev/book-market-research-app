@@ -12,20 +12,23 @@ export type ProviderDefinition = {
 };
 
 /**
- * Final connector stack (July 2026):
+ * Connector stack (July 2026):
  *
  * LIVE DATA:
- *   SerpApi      → Amazon search + Google Trends
- *   DataForSEO   → Keyword search volume + difficulty
+ *   SerpApi            → Amazon search + Google Trends
+ *   DataForSEO         → Keyword search volume + difficulty
+ *   ScrapingBee        → Amazon product scraping + SERP data
+ *   Keywords Everywhere → Keyword metrics + search volume
  *
- * IMAGE GENERATION (book covers, illustrations, pages):
- *   Gemini       → Google Nano Banana / Gemini Flash Image
+ * IMAGE GENERATION:
+ *   Gemini             → Google Nano Banana / Gemini Flash Image
  *
  * TTS / AUDIOBOOK:
- *   ElevenLabs   → Text-to-speech (eleven_flash_v2_5)
+ *   ElevenLabs         → Text-to-speech (eleven_flash_v2_5)
  *
- * AI FALLBACK (free):
- *   Solene       → Keyword ideas, market summaries, competitor analysis
+ * AI FALLBACK:
+ *   Solene             → Keyword ideas, market summaries, competitor analysis
+ *   Anthropic          → Claude LLM fallback
  */
 
 export const providerDefinitions: ProviderDefinition[] = [
@@ -47,6 +50,26 @@ export const providerDefinitions: ProviderDefinition[] = [
     credentialEnvKeys: ["DATAFORSEO_CREDENTIALS"],
     authType: "basic",
     apps: ["dataforseo", "dataforseo-labs-api", "dataforseo-keywords-data-api"],
+    tier: "live"
+  },
+  {
+    key: "scrapingbee",
+    label: "ScrapingBee",
+    description: "Amazon product scraping, SERP data extraction, and product page parsing.",
+    baseUrl: "https://app.scrapingbee.com/api",
+    credentialEnvKeys: ["SCRAPINGBEE_API_KEY"],
+    authType: "apiKeyQuery",
+    apps: ["scrapingbee"],
+    tier: "live"
+  },
+  {
+    key: "keywords-everywhere",
+    label: "Keywords Everywhere",
+    description: "Keyword metrics, search volume, and related keyword data.",
+    baseUrl: "https://api.keywordseverywhere.com",
+    credentialEnvKeys: ["KEYWORDS_EVERYWHERE_API_KEY"],
+    authType: "apiKeyHeader",
+    apps: ["keywords-everywhere-api"],
     tier: "live"
   },
   {
@@ -92,9 +115,10 @@ export function getConnectorStatus(appName: string) {
   const missingEnvKeys = provider.credentialEnvKeys.filter((k) => !processEnv[k]);
   const hasRealKeys = missingEnvKeys.length === 0;
   const hasSolene = !!processEnv["SOLENE_API_KEY"];
+  const hasAnthropic = !!processEnv["ANTHROPIC_API_KEY"];
 
   return {
-    configured: hasRealKeys || hasSolene,
+    configured: hasRealKeys || hasSolene || hasAnthropic,
     provider,
     missingEnvKeys: hasRealKeys ? [] : missingEnvKeys
   };
