@@ -23,7 +23,6 @@ const geoNames: Record<string, string> = {
   es: "Spain", it: "Italy", pt: "Brazil", ar: "Saudi Arabia"
 };
 
-// Only active tool prompts — SerpApi, DataForSEO, Gemini, ElevenLabs, Solene
 function buildClaudePrompt(appName: string, toolName: string, storyTitle: string, primaryLanguage: string): string {
   const geo = geoNames[primaryLanguage] ?? "United States";
 
@@ -51,6 +50,18 @@ Return ONLY valid JSON:
 Return 10 keywords.`,
       default: `Get keyword data for KDP book topic: "${storyTitle}".
 Return ONLY valid JSON with keyword volume, difficulty, and CPC data for 10 keywords.`
+    },
+    scrapingbee: {
+      default: `Scrape Amazon search results for: "${storyTitle}".
+Return ONLY valid JSON:
+{"organic_results":[{"position":1,"title":"Book Title","price":"$9.99","rating":4.5,"reviews":1243,"asin":"B0XXXXXXXX"}]}
+Return 8 products.`
+    },
+    "keywords-everywhere-api": {
+      default: `Get keyword metrics for: "${storyTitle}".
+Return ONLY valid JSON:
+[{"keyword":"phrase","volume":2400,"cpc":0.45,"competition":0.35,"trend":"up"}]
+Return 10 keywords.`
     },
     gemini: {
       default: `Generate a detailed image prompt for a book cover about: "${storyTitle}".
@@ -93,19 +104,19 @@ export async function POST(request: Request) {
   // ── Try real API first if configured ──────────────────────
   if (status.configured && status.provider) {
     try {
-      if (appName === "serpapi") {
+      if (appName === "serpapi" && processEnv.SERPAPI_API_KEY) {
         const key = processEnv.SERPAPI_API_KEY;
         const engine = toolName === "searchAmazon" ? "amazon" : "google_trends";
         const params = new URLSearchParams({
           api_key: key,
           engine,
-          ...(engine === "amazon" ? { k: storyTitle } : { q: storyTitle, geo: primaryLanguage === "en" ? "US" : primaryLanguage.toUpperCase() })
+          ...(engine === "amazon" ? { k: storyTitle } : { q: storyTitle, geo: primaryLanguage.toUpperCase() })
         });
         const res = await fetch(`https://serpapi.com/search.json?${params}`, { cache: "no-store" });
         return NextResponse.json({ executedAt: new Date().toISOString(), provider: "SerpApi (live)", toolKey: activeTool.key, data: await res.json() });
       }
 
-      if (appName === "dataforseo") {
+      if (appName === "dataforseo" && processEnv.DATAFORSEO_CREDENTIALS) {
         const creds = processEnv.DATAFORSEO_CREDENTIALS;
         const res = await fetch("https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live", {
           method: "POST",
@@ -116,7 +127,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ executedAt: new Date().toISOString(), provider: "DataForSEO (live)", toolKey: activeTool.key, data: await res.json() });
       }
 
-      if (appName === "elevenlabs") {
+      if (appName === "scrapingbee" && processEnv.SCRAPINGBEE_API_KEY) {
+        const key = processEnv.SCRAPINGBEE_API_KEY;
+        const params = new URLSearchParams({
+          api_key: key,
+          url: `https://www.amazon.com/s?k=${encodeURIComponent(storyTitle)}`,
+          render_js: "false"
+        });
+        const res = await fetch(`https://app.scrapingbee.com/api/v1/?${params}`, { cache: "no-store" });
+        return NextResponse.json({ executedAt: new Date().toISOString(), provider: "ScrapingBee (live)", toolKey: activeTool.key, data: { html: await res.text() } });
+      }
+
+      if (appName === "keywords-everywhere-api" && processEnv.KEYWORDS_EVERYWHERE_API_KEY) {
+        const key = processEnv.KEYWORDS_EVERYWHERE_API_KEY;
+        const res = await fetch("https://api.keywordseverywhere.com/v1/get_keyword_data", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ keywords: [storyTitle, `${storyTitle} book`], country: "us" }),
+          cache: "no-store"
+        });
+        return NextResponse.json({ executedAt: new Date().toISOString(), provider: "Keywords Everywhere (live)", toolKey: activeTool.key, data: await res.json() });
+      }
+
+      if (appName === "elevenlabs" && processEnv.ELEVENLABS_API_KEY) {
         const key = processEnv.ELEVENLABS_API_KEY;
         const voiceId = body.overrides?.elevenLabsVoiceId ?? "EXAVITQu4vr4xnSDxMaL";
         const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
@@ -129,7 +162,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ executedAt: new Date().toISOString(), provider: "ElevenLabs (live)", toolKey: activeTool.key, data: { audioBase64: buf.toString("base64"), bytes: buf.length } });
       }
 
-      if (appName === "gemini") {
+      if (appName === "gemini" && processEnv.GEMINI_API_KEY) {
         const key = processEnv.GEMINI_API_KEY;
         const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent", {
           method: "POST",
