@@ -35,7 +35,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://book-market-research-app.up.railway.app/api/agent-research",
+        "url": "https://book-market-research-app-production.up.railway.app/api/agent-research",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
