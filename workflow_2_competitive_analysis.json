@@ -11,36 +11,50 @@
         "triggerAtMinute": 0,
         "timezone": "Europe/Oslo"
       },
-      "id": "cron-trigger",
-      "name": "Cron Trigger - Monday 10am",
+      "id": "cron",
+      "name": "Cron - Monday 10am",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
-      "position": [250, 100]
+      "position": [
+        250,
+        100
+      ]
     },
     {
       "parameters": {
-        "functionCode": "const now = new Date();\nreturn [\n  {\n    json: {\n      execution_id: `exec_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`,\n      workflow_name: 'Competitive Analysis',\n      timestamp: now.toISOString(),\n      timestamp_readable: now.toLocaleString('en-NO', { timeZone: 'Europe/Oslo' }),\n      niches: ['romance', 'thriller', 'self-help', 'business', 'cooking']\n    }\n  }\n];"
+        "functionCode": "const now = new Date();\nreturn [{ json: { execution_id: `exec_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`, workflow_name: 'Competitive Analysis', timestamp: now.toISOString(), niches: ['romance','thriller','self-help','business','cooking'] } }];"
       },
-      "id": "set-context",
-      "name": "Set Execution Context",
+      "id": "ctx",
+      "name": "Set Context",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [450, 100]
+      "position": [
+        450,
+        100
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "http://localhost:3000/api/competitors",
-        "sendQuery": true,
-        "queryParameters": {
+        "method": "POST",
+        "url": "https://book-market-research-app.up.railway.app/api/agent-research",
+        "sendBody": true,
+        "bodyParameters": {
           "parameters": [
             {
               "name": "niche",
-              "value": "={{$nodeExecutionContext.item.current.value}}"
+              "value": "romance,thriller,self-help,business,cooking"
             },
             {
-              "name": "limit",
-              "value": "10"
+              "name": "tool",
+              "value": "competitors"
+            },
+            {
+              "name": "format",
+              "value": "competitors"
+            },
+            {
+              "name": "language",
+              "value": "en"
             }
           ]
         },
@@ -48,36 +62,91 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "Bearer {{env.API_TOKEN}}"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         }
       },
-      "id": "http-fetch-competitors",
-      "name": "HTTP - Fetch Competitors",
+      "id": "http",
+      "name": "HTTP - Competitive Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [850, 100]
-    },
-    {
-      "parameters": {
-        "functionCode": "const item = $input.first().json;\nconst context = $input.all()[0].json;\n\nconst saturation = (item.competitors_count / 100000) * 100;\nconst opportunity = saturation < 40 && item.search_volume > 3000 ? '🎯 Opportunity' : '';\n\nreturn {\n  A: context.timestamp_readable,\n  B: item.niche,\n  C: item.competitor_name || '',\n  D: item.book_title || '',\n  E: item.reviews || 0,\n  F: item.rating || 0,\n  G: item.price || '$0.00',\n  H: Math.round(saturation * 10) / 10,\n  I: opportunity,\n  J: context.execution_id\n};"
-      },
-      "id": "transform-competitor-data",
-      "name": "Transform - Calculate Saturation",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [1050, 100]
+      "position": [
+        650,
+        100
+      ]
     },
     {
       "parameters": {
         "googleSheetMode": "append",
         "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",
-        "sheetName": "Competitors",
-        "dataMode": "define_by_map",
-        "dataMapping": {
-          "mappingMode": "defineByMap",
-          "value": [
-            { "fromKey": "A", "toKey": "Timestamp" },\n            { "fromKey": "B", "toKey": "Niche" },\n            { "fromKey": "C", "toKey": "Competitor Name" },\n            { "fromKey": "D", "toKey": "Book Title" },\n            { "fromKey": "E", "toKey": "Reviews" },\n            { "fromKey": "F", "toKey": "Rating" },\n            { "fromKey": "G", "toKey": "Price" },\n            { "fromKey": "H", "toKey": "Market Saturation %" },\n            { "fromKey": "I", "toKey": "Opportunity Flag" },\n            { "fromKey": "J", "toKey": "Execution ID" }\n          ]\n        }\n      },\n      "id": "append-sheets-competitors",\n      "name": "Google Sheets - Append Competitors",\n      "type": "n8n-nodes-base.googleSheets",\n      "typeVersion": 4.4,\n      "position": [1250, 100]\n    },\n    {\n      "parameters": {\n        "googleSheetMode": "append",\n        "spreadsheetId": "1jaYJZ44z8K8TYrCfrIAJ_K9BSly1GPRMXyCQTEox9Pg",\n        "sheetName": "Execution Log",\n        "dataMode": "define_by_map",\n        "dataMapping": {\n          "mappingMode": "defineByMap",\n          "value": [\n            { \"fromKey\": \"timestamp_readable\", \"toKey\": \"Timestamp\" },\n            { \"fromKey\": \"workflow_name\", \"toKey\": \"Workflow\" },\n            { \"fromKey\": \"status\", \"toKey\": \"Status\" },\n            { \"fromKey\": \"execution_id\", \"toKey\": \"Execution ID\" }\n          ]\n        }\n      },\n      \"id\": \"log-execution\",\n      \"name\": \"Google Sheets - Log Execution\",\n      \"type\": \"n8n-nodes-base.googleSheets\",\n      \"typeVersion\": 4.4,\n      \"position\": [1450, 100]\n    },\n    {\n      \"parameters\": {\n        \"trigger\": \"errors\"\n      },\n      \"id\": \"error-trigger\",\n      \"name\": \"Error Trigger\",\n      \"type\": \"n8n-nodes-base.errorTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [850, 300]\n    },\n    {\n      \"parameters\": {\n        \"fromEmail\": \"noreply@n8n.io\",\n        \"toEmail\": \"your-email@example.com\",\n        \"subject\": \"[ALERT] Competitive Analysis - Execution Failed\",\n        \"textContent\": \"Workflow: Competitive Analysis\\nTimestamp: {{$now}}\\nError: {{error.message}}\\nCheck logs: https://mizgind1t.app.n8n.cloud\"\n      },\n      \"id\": \"send-error-email\",\n      \"name\": \"Send Error Email\",\n      \"type\": \"n8n-nodes-base.sendEmail\",\n      \"typeVersion\": 1,\n      \"position\": [1050, 300]\n    }\n  ],\n  \"connections\": {\n    \"cron-trigger\": {\n      \"main\": [[{ \"node\": \"set-context\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"set-context\": {\n      \"main\": [[{ \"node\": \"http-fetch-competitors\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"http-fetch-competitors\": {\n      \"main\": [[{ \"node\": \"transform-competitor-data\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"transform-competitor-data\": {\n      \"main\": [[{ \"node\": \"append-sheets-competitors\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"append-sheets-competitors\": {\n      \"main\": [[{ \"node\": \"log-execution\", \"type\": \"main\", \"index\": 0 }]]\n    },\n    \"error-trigger\": {\n      \"main\": [[{ \"node\": \"send-error-email\", \"type\": \"main\", \"index\": 0 }]]\n    }\n  },\n  \"active\": true,\n  \"settings\": {\n    \"timezone\": \"Europe/Oslo\"\n  }\n}
-
+        "sheetName": "Competitive Analysis",
+        "dataMode": "define_by_map"
+      },
+      "id": "sheets",
+      "name": "Google Sheets - Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        850,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@n8n.io",
+        "toEmail": "buddybuses@gmail.com",
+        "subject": "[ALERT] Competitive Analysis Failed",
+        "textContent": "Error: {{error.message}}"
+      },
+      "id": "err-email",
+      "name": "Error Email",
+      "type": "n8n-nodes-base.sendEmail",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "cron": {
+      "main": [
+        [
+          {
+            "node": "ctx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ctx": {
+      "main": [
+        [
+          {
+            "node": "http",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "http": {
+      "main": [
+        [
+          {
+            "node": "sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "Europe/Oslo"
+  }
+}
