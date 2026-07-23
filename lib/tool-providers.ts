@@ -6,26 +6,26 @@ export type ProviderDefinition = {
   description: string;
   baseUrl: string;
   credentialEnvKeys: string[];
-  authType: "apiKeyQuery" | "basic" | "bearerHeader" | "apiKeyHeader";
+  authType: "apiKeyQuery" | "basic" | "bearerHeader" | "apiKeyHeader" | "apiKeyHeaderCustom";
   apps: string[];
-  tier: "live" | "ai" | "fallback";
+  tier: "live" | "ai" | "image" | "tts";
 };
 
 /**
- * Active connector stack (as of July 2026):
+ * Final connector stack (July 2026):
  *
- * TIER 1 — Live data APIs (paid, real-time results)
+ * LIVE DATA:
  *   SerpApi      → Amazon search + Google Trends
  *   DataForSEO   → Keyword search volume + difficulty
- *   ElevenLabs   → Text-to-speech / audiobook generation
  *
- * TIER 2 — Solene AI agent (Base44, free via SOLENE_API_KEY)
- *   Handles: keyword ideas, competitor analysis, market summaries,
- *            trend interpretation, and any tool not covered by Tier 1.
+ * IMAGE GENERATION (book covers, illustrations, pages):
+ *   Gemini       → Google Nano Banana / Gemini Flash Image
  *
- * REMOVED (not needed):
- *   Haloscan, ScrapingBee, SE Ranking, Semrush,
- *   Keywords Everywhere, Scrape-It.Cloud, Amazon SP-API webhook
+ * TTS / AUDIOBOOK:
+ *   ElevenLabs   → Text-to-speech (eleven_flash_v2_5)
+ *
+ * AI FALLBACK (free):
+ *   Solene       → Keyword ideas, market summaries, competitor analysis
  */
 
 export const providerDefinitions: ProviderDefinition[] = [
@@ -50,6 +50,16 @@ export const providerDefinitions: ProviderDefinition[] = [
     tier: "live"
   },
   {
+    key: "gemini",
+    label: "Google Gemini (Nano Banana)",
+    description: "AI image generation for book covers, illustrations, and page designs.",
+    baseUrl: "https://generativelanguage.googleapis.com",
+    credentialEnvKeys: ["GEMINI_API_KEY"],
+    authType: "apiKeyHeaderCustom",
+    apps: ["gemini"],
+    tier: "image"
+  },
+  {
     key: "elevenlabs",
     label: "ElevenLabs",
     description: "Text-to-speech for audiobook generation.",
@@ -57,7 +67,7 @@ export const providerDefinitions: ProviderDefinition[] = [
     credentialEnvKeys: ["ELEVENLABS_API_KEY"],
     authType: "apiKeyHeader",
     apps: ["elevenlabs"],
-    tier: "live"
+    tier: "tts"
   },
   {
     key: "solene",
