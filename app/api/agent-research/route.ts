@@ -31,9 +31,12 @@ type AgentResearchBody = {
   niche: string;
   tool: string;
   language?: string;
-  format?: "trends" | "keywords" | "amazon" | "competitors" | "dataforseo" | "tts" | "generic";
+  format?: "trends" | "keywords" | "amazon" | "competitors" | "dataforseo" | "tts" | "image" | "generic";
   text?: string;
   voiceId?: string;
+  prompt?: string;
+  style?: string;
+  imageFormat?: string;
 };
 
 async function callSerpApi(params: Record<string, string>): Promise<Record<string, unknown>> {
@@ -74,6 +77,37 @@ async function callElevenLabs(text: string, voiceId?: string): Promise<{ audioBa
   return { audioBase64: buf.toString("base64"), voiceName: voice.name, bytes: buf.length };
 }
 
+async function callGeminiImage(prompt: string): Promise<{ imageBase64: string; textResponse: string }> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY not set");
+  const res = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
+    {
+      method: "POST",
+      headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
+      }),
+      cache: "no-store"
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json() as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? "Gemini image generation failed");
+  }
+  const data = await res.json();
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  let imageBase64 = "";
+  let textResponse = "";
+  for (const part of parts) {
+    if (part.inlineData?.data) imageBase64 = part.inlineData.data;
+    if (part.text) textResponse = part.text;
+  }
+  if (!imageBase64) throw new Error("Gemini returned no image");
+  return { imageBase64, textResponse };
+}
+
 async function callSolene(prompt: string): Promise<string> {
   const apiKey = process.env.SOLENE_API_KEY;
   if (!apiKey) throw new Error("SOLENE_API_KEY not set");
@@ -105,14 +139,21 @@ const solenePrompts: Record<string, (niche: string, geo: string) => string> = {
 
 export async function POST(request: Request) {
   const body = (await request.json()) as AgentResearchBody;
-  const { niche, tool, language = "en", format = "generic", text, voiceId } = body;
-  if (!niche && format !== "tts") return NextResponse.json({ error: "niche is required" }, { status: 400 });
+  const { niche, tool, language = "en", format = "generic", text, voiceId, prompt, style, imageFormat } = body;
+  if (!niche && format !== "tts" && format !== "image") return NextResponse.json({ error: "niche is required" }, { status: 400 });
 
   const market = languageMarketMap[language] ?? languageMarketMap.en;
   const geo = geoNames[language] ?? "United States";
 
   try {
-    // ── TTS via ElevenLabs ───────────────────────────────────
+    // ── Image generation via Gemini (Nano Banana) ──────────────
+    if (format === "image") {
+      const imgPrompt = prompt ?? `Book cover for: "${niche}". Style: ${style ?? "watercolor"}. Format: ${imageFormat ?? "cover"}.`;
+      const img = await callGeminiImage(imgPrompt);
+      return NextResponse.json({ executedAt: new Date().toISOString(), provider: "Google Gemini (Nano Banana)", niche, tool, format, data: img });
+    }
+
+    // ── TTS via ElevenLabs ────────────────────────────────────
     if (format === "tts") {
       const ttsText = text ?? `This is a voiceover for ${niche}.`;
       const audio = await callElevenLabs(ttsText, voiceId);
@@ -131,7 +172,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ executedAt: new Date().toISOString(), provider: "SerpApi (live)", niche, tool, format, data });
     }
 
-    // ── Keywords via DataForSEO ──────────────────────────────
+    // ── Keywords via DataForSEO ───────────────────────────────
     if (format === "keywords" && process.env.DATAFORSEO_CREDENTIALS) {
       const data = await callDataForSEO("/keywords_data/google_ads/search_volume/live", [
         { keywords: [niche, `${niche} book`, `best ${niche} books`, `${niche} guide`], location_code: market.locationCode, language_code: language === "ar" ? "ar" : language }
@@ -147,7 +188,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ executedAt: new Date().toISOString(), provider: "Solene (Base44 AI)", agentId: SOLENE_AGENT_ID, niche, tool, format, data });
     }
 
-    return NextResponse.json({ error: "No provider configured. Add SERPAPI_API_KEY, DATAFORSEO_CREDENTIALS, or SOLENE_API_KEY to Railway." }, { status: 500 });
+    return NextResponse.json({ error: "No provider configured. Add SERPAPI_API_KEY, DATAFORSEO_CREDENTIALS, ELEVENLABS_API_KEY, GEMINI_API_KEY, or SOLENE_API_KEY to Railway." }, { status: 500 });
 
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
